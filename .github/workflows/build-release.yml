@@ -1,0 +1,233 @@
+name: Build release installers
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Upstream Element tag to build
+        required: true
+        default: 1.1.1
+
+permissions:
+  contents: write
+
+env:
+  UPSTREAM_REPOSITORY: kushview/element
+
+jobs:
+  build:
+    name: Build ${{ matrix.platform }} installer
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: Linux x86_64
+            os: ubuntu-22.04
+            artifact: linux
+          - platform: macOS universal
+            os: macos-15-intel
+            artifact: macos
+          - platform: Windows x64
+            os: windows-2022
+            artifact: windows
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - name: Check out upstream source
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ env.UPSTREAM_REPOSITORY }}
+          ref: ${{ inputs.version }}
+          submodules: recursive
+
+      - name: Install Linux dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            build-essential \
+            cmake \
+            ninja-build \
+            libasound2-dev \
+            libjack-jackd2-dev \
+            ladspa-sdk \
+            libcurl4-openssl-dev \
+            libfontconfig1-dev \
+            libfreetype6-dev \
+            libx11-dev \
+            libxcomposite-dev \
+            libxcursor-dev \
+            libxext-dev \
+            libxinerama-dev \
+            libxrandr-dev \
+            libxrender-dev \
+            libglu1-mesa-dev \
+            mesa-common-dev
+
+      - name: Set up Boost on Linux
+        if: runner.os == 'Linux'
+        id: boost-linux
+        uses: MarkusJx/install-boost@v2.4.5
+        with:
+          boost_version: 1.83.0
+          platform_version: 22.04
+          toolset: gcc
+
+      - name: Install macOS dependencies
+        if: runner.os == 'macOS'
+        run: brew install cmake ninja
+
+      - name: Set up Boost on macOS
+        if: runner.os == 'macOS'
+        id: boost-macos
+        uses: MarkusJx/install-boost@v2.4.5
+        with:
+          boost_version: 1.83.0
+          platform_version: 11
+          toolset: clang
+
+      - name: Install Windows dependencies
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          choco install nsis -y --no-progress
+          $boostVersion = '1.83.0'
+          $boostDirectory = "boost_$($boostVersion -replace '\.','_')"
+          Invoke-WebRequest `
+            -Uri "https://archives.boost.io/release/$boostVersion/source/$boostDirectory.zip" `
+            -OutFile boost.zip
+          New-Item -ItemType Directory -Force -Path C:\local | Out-Null
+          Expand-Archive -Path boost.zip -DestinationPath C:\local
+          "BOOST_ROOT=C:\local\$boostDirectory" >> $env:GITHUB_ENV
+
+      - name: Set up MSVC
+        if: runner.os == 'Windows'
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: amd64
+
+      - name: Configure Windows build
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          cmake -B build -G Ninja `
+            -DCMAKE_C_COMPILER=cl `
+            -DCMAKE_CXX_COMPILER=cl `
+            -DCMAKE_BUILD_TYPE=Release `
+            -DELEMENT_ENABLE_ASIO=ON `
+            -DELEMENT_ENABLE_UPDATER=ON `
+            -DELEMENT_BUILD_PLUGINS=ON
+
+      - name: Configure Linux build
+        if: runner.os == 'Linux'
+        env:
+          BOOST_ROOT: ${{ steps.boost-linux.outputs.BOOST_ROOT }}
+        run: |
+          cmake -B build -G Ninja \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DELEMENT_ENABLE_UPDATER=OFF \
+            -DELEMENT_BUILD_PLUGINS=ON
+
+      - name: Configure universal macOS build
+        if: runner.os == 'macOS'
+        env:
+          BOOST_ROOT: ${{ steps.boost-macos.outputs.BOOST_ROOT }}
+        run: |
+          cmake -B build -G Ninja \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_OSX_ARCHITECTURES='x86_64;arm64' \
+            -DCMAKE_OSX_DEPLOYMENT_TARGET=11.0 \
+            -DELEMENT_ENABLE_UPDATER=ON \
+            -DELEMENT_BUILD_PLUGINS=ON
+
+      - name: Build and test
+        run: |
+          cmake --build build --config Release
+          ctest --test-dir build --build-config Release --output-on-failure
+
+      - name: Package Linux installer
+        if: runner.os == 'Linux'
+        run: |
+          cpack --config build/CPackConfig.cmake -G DEB -B package
+          mkdir -p dist
+          mv package/*.deb "dist/element-${{ inputs.version }}-linux-x86_64.deb"
+
+      - name: Package macOS installer
+        if: runner.os == 'macOS'
+        run: |
+          cpack --config build/CPackConfig.cmake -G DragNDrop -B package
+          mkdir -p dist
+          mv package/*.dmg "dist/element-${{ inputs.version }}-macos.dmg"
+
+      - name: Package Windows installer
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          cpack --config build/CPackConfig.cmake -G NSIS -B package
+          New-Item -ItemType Directory -Force -Path dist | Out-Null
+          $installer = Get-ChildItem package -Filter *.exe | Select-Object -First 1
+          if (-not $installer) { throw 'CPack did not produce an EXE installer' }
+          Move-Item $installer.FullName "dist/element-${{ inputs.version }}-win64.exe"
+
+      - name: Upload installer artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: element-${{ inputs.version }}-${{ matrix.artifact }}
+          path: dist/*
+          if-no-files-found: error
+
+  release:
+    name: Create draft release
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the upstream tag
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ env.UPSTREAM_REPOSITORY }}
+          ref: ${{ inputs.version }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Mirror the upstream tag to this fork
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ inputs.version }}
+        run: |
+          set -euo pipefail
+          remote="https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          upstream_commit="$(git rev-list -n 1 "refs/tags/${VERSION}")"
+          existing_commit="$(git ls-remote "$remote" "refs/tags/${VERSION}^{}" | cut -f1)"
+          if [ -z "$existing_commit" ]; then
+            existing_commit="$(git ls-remote "$remote" "refs/tags/${VERSION}" | cut -f1)"
+          fi
+          if [ -n "$existing_commit" ] && [ "$existing_commit" != "$upstream_commit" ]; then
+            echo "Fork tag ${VERSION} exists at ${existing_commit}, expected ${upstream_commit}." >&2
+            exit 1
+          fi
+          if [ -z "$existing_commit" ]; then
+            git push "$remote" "refs/tags/${VERSION}:refs/tags/${VERSION}"
+          fi
+
+      - name: Download installers
+        uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+
+      - name: Create or update draft release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ inputs.version }}
+        run: |
+          set -euo pipefail
+          if ! gh release view "$VERSION" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release create "$VERSION" \
+              --repo "$GITHUB_REPOSITORY" \
+              --draft \
+              --generate-notes \
+              --title "Element v${VERSION}"
+          fi
+          gh release upload "$VERSION" dist/* \
+            --repo "$GITHUB_REPOSITORY" \
+            --clobber
