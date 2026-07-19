@@ -24,6 +24,7 @@
 #include "messages.hpp"
 #include "auth.hpp"
 #include "utils.hpp"
+#include "windowsstartup.hpp"
 
 /** Define to force the application to behave as if running for the first time.
     When enabled (set to 1), the application will:
@@ -212,6 +213,7 @@ bool Application::moreThanOneInstanceAllowed() { return true; }
 
 void Application::initialise (const String& commandLine)
 {
+    launchCommandLine = commandLine;
     world = std::make_unique<Context> (RunMode::Standalone, commandLine);
     if (maybeLaunchScannerWorker (commandLine))
         return;
@@ -418,6 +420,11 @@ void Application::finishLaunching()
     startup.reset();
 
     auto& ui = *world->services().find<UI>();
+#if JUCE_WINDOWS
+    ui.setStartMinimizedToTray (
+        world->settings().startMinimizedToTray()
+        && windowsstartup::shouldStartMinimizedToTray (launchCommandLine));
+#endif
     if (auto cf = createContentFactory())
         ui.setContentFactory (std::move (cf));
 

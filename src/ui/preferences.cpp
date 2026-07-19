@@ -21,6 +21,7 @@
 #include "services/oscservice.hpp"
 #include "ui/buttons.hpp"
 #include "ui/viewhelpers.hpp"
+#include "windowsstartup.hpp"
 
 namespace element {
 
@@ -411,8 +412,31 @@ public:
         askToSaveSession.setToggleState (settings.askToSaveSession(), dontSendNotification);
         askToSaveSession.getToggleStateValue().addListener (this);
 
+#if JUCE_WINDOWS
+        addAndMakeVisible (startWithWindowsLabel);
+        startWithWindowsLabel.setText ("Start with Windows", dontSendNotification);
+        startWithWindowsLabel.setFont (Font (FontOptions (12.0, Font::bold)));
+        addAndMakeVisible (startWithWindows);
+        startWithWindows.setClickingTogglesState (true);
+        startWithWindows.setToggleState (windowsstartup::isEnabled(), dontSendNotification);
+        startWithWindows.getToggleStateValue().addListener (this);
+
+        addAndMakeVisible (startMinimizedToTrayLabel);
+        startMinimizedToTrayLabel.setText ("Start minimized to tray", dontSendNotification);
+        startMinimizedToTrayLabel.setFont (Font (FontOptions (12.0)));
+        addAndMakeVisible (startMinimizedToTray);
+        startMinimizedToTray.setClickingTogglesState (true);
+        startMinimizedToTray.setToggleState (settings.startMinimizedToTray(), dontSendNotification);
+        startMinimizedToTray.getToggleStateValue().addListener (this);
+        updateWindowsStartupEnablement();
+#endif
+
         addAndMakeVisible (systrayLabel);
+#if JUCE_WINDOWS
+        systrayLabel.setText ("Minimize to tray", dontSendNotification);
+#else
         systrayLabel.setText ("Show system tray", dontSendNotification);
+#endif
         systrayLabel.setFont (Font (FontOptions (12.0, Font::bold)));
         addAndMakeVisible (systray);
         systray.setClickingTogglesState (true);
@@ -481,6 +505,10 @@ public:
     {
         clockSource.removeListener (this);
         mainContentBox.getSelectedIdAsValue().removeListener (this);
+#if JUCE_WINDOWS
+        startWithWindows.getToggleStateValue().removeListener (this);
+        startMinimizedToTray.getToggleStateValue().removeListener (this);
+#endif
     }
 
     void filenameComponentChanged (FilenameComponent* f) override
@@ -537,6 +565,12 @@ public:
         mainContentLabel.setBounds (r2.removeFromLeft (getWidth() / 2));
         mainContentBox.setBounds (r2.withSizeKeepingCentre (r2.getWidth(), settingHeight));
 
+#if JUCE_WINDOWS
+        layoutSetting (r, startWithWindowsLabel, startWithWindows);
+        layoutSetting (r, startMinimizedToTrayLabel, startMinimizedToTray);
+        startMinimizedToTrayLabel.setBounds (
+            startMinimizedToTrayLabel.getBounds().withTrimmedLeft (18));
+#endif
         layoutSetting (r, systrayLabel, systray);
         layoutSetting (r, desktopScaleLabel, desktopScale, getWidth() / 4);
 
@@ -607,6 +641,35 @@ public:
             settings.setSystrayEnabled (systray.getToggleState());
             gui.refreshSystemTray();
         }
+#if JUCE_WINDOWS
+        else if (value.refersToSameSourceAs (startWithWindows.getToggleStateValue()))
+        {
+            const auto shouldStart = startWithWindows.getToggleState();
+            if (! windowsstartup::setEnabled (shouldStart, settings.startMinimizedToTray()))
+            {
+                startWithWindows.setToggleState (! shouldStart, dontSendNotification);
+                updateWindowsStartupEnablement();
+                showWindowsStartupError();
+                return;
+            }
+            updateWindowsStartupEnablement();
+        }
+        else if (value.refersToSameSourceAs (startMinimizedToTray.getToggleStateValue()))
+        {
+            const auto oldValue = settings.startMinimizedToTray();
+            const auto newValue = startMinimizedToTray.getToggleState();
+            settings.setStartMinimizedToTray (newValue);
+
+            if (startWithWindows.getToggleState()
+                && ! windowsstartup::setEnabled (true, newValue))
+            {
+                settings.setStartMinimizedToTray (oldValue);
+                startMinimizedToTray.setToggleState (oldValue, dontSendNotification);
+                showWindowsStartupError();
+                return;
+            }
+        }
+#endif
         else if (value.refersToSameSourceAs (mainContentBox.getSelectedIdAsValue()))
         {
             auto uitype = settings.getMainContentType();
@@ -668,6 +731,13 @@ private:
     Label systrayLabel;
     SettingButton systray;
 
+#if JUCE_WINDOWS
+    Label startWithWindowsLabel;
+    SettingButton startWithWindows;
+    Label startMinimizedToTrayLabel;
+    SettingButton startMinimizedToTray;
+#endif
+
     Label desktopScaleLabel;
     Slider desktopScale;
 
@@ -677,6 +747,23 @@ private:
     Settings& settings;
     AudioEnginePtr engine;
     GuiService& gui;
+
+#if JUCE_WINDOWS
+    void updateWindowsStartupEnablement()
+    {
+        const auto enabled = startWithWindows.getToggleState();
+        startMinimizedToTrayLabel.setEnabled (enabled);
+        startMinimizedToTray.setEnabled (enabled);
+    }
+
+    static void showWindowsStartupError()
+    {
+        AlertWindow::showMessageBoxAsync (
+            AlertWindow::WarningIcon,
+            "Start with Windows",
+            "Element could not update your Windows startup settings.");
+    }
+#endif
 };
 
 //==============================================================================

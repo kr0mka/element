@@ -29,6 +29,7 @@ const char* Settings::midiEngineKey = "midiEngine";
 const char* Settings::oscHostPortKey = "oscHostPortKey";
 const char* Settings::oscHostEnabledKey = "oscHostEnabledKey";
 const char* Settings::systrayKey = "systrayKey";
+const char* Settings::startMinimizedToTrayKey = "startMinimizedToTray";
 const char* Settings::midiOutLatencyKey = "midiOutLatency";
 const char* Settings::desktopScaleKey = "desktopScale";
 const char* Settings::mainContentTypeKey = "mainContentType";
@@ -373,6 +374,21 @@ void Settings::setSystrayEnabled (bool enabled)
         return;
     if (auto* p = getProps())
         p->setValue (systrayKey, enabled);
+}
+
+bool Settings::startMinimizedToTray() const
+{
+    if (auto* p = getProps())
+        return p->getBoolValue (startMinimizedToTrayKey, false);
+    return false;
+}
+
+void Settings::setStartMinimizedToTray (bool enabled)
+{
+    if (startMinimizedToTray() == enabled)
+        return;
+    if (auto* p = getProps())
+        p->setValue (startMinimizedToTrayKey, enabled);
 }
 
 //=============================================================================
