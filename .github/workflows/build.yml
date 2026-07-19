@@ -23,6 +23,10 @@ on:
       - '.github/workflows/build.yml'
   workflow_dispatch:
 
+concurrency:
+  group: preliminary-windows-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build-and-test:
     strategy:
@@ -105,18 +109,40 @@ jobs:
         platform_version: 11
         toolset: clang
 
-    - name: Install Boost headers (Windows)
+    - name: Cache Boost headers (Windows)
+      if: runner.os == 'Windows'
+      uses: actions/cache@v4
+      with:
+        path: C:\local\boost_1_83_0
+        key: windows-boost-1.83.0
+
+    - name: Cache NSIS (Windows)
+      if: runner.os == 'Windows'
+      uses: actions/cache@v4
+      with:
+        path: C:\Program Files (x86)\NSIS
+        key: windows-nsis-3
+
+    - name: Install Windows dependencies
       if: runner.os == 'Windows'
       shell: pwsh
       run: |
-        choco install nsis -y --no-progress
         $boost_ver = "1.83.0"
         $boost_dir = "boost_$($boost_ver -replace '\.','_')"
-        $url = "https://archives.boost.io/release/$boost_ver/source/${boost_dir}.zip"
-        Invoke-WebRequest -Uri $url -OutFile boost.zip
-        New-Item -ItemType Directory -Force -Path C:\local
-        Expand-Archive -Path boost.zip -DestinationPath C:\local
-        echo "BOOST_ROOT=C:\local\$boost_dir" >> $env:GITHUB_ENV
+        $boost_root = "C:\local\$boost_dir"
+        if (-not (Test-Path $boost_root)) {
+          $url = "https://archives.boost.io/release/$boost_ver/source/${boost_dir}.zip"
+          Invoke-WebRequest -Uri $url -OutFile boost.zip
+          New-Item -ItemType Directory -Force -Path C:\local | Out-Null
+          Expand-Archive -Path boost.zip -DestinationPath C:\local
+        }
+        "BOOST_ROOT=$boost_root" | Out-File -FilePath $env:GITHUB_ENV -Append
+
+        $nsis_dir = "C:\Program Files (x86)\NSIS"
+        if (-not (Test-Path (Join-Path $nsis_dir 'makensis.exe'))) {
+          choco install nsis -y --no-progress
+        }
+        $nsis_dir | Out-File -FilePath $env:GITHUB_PATH -Append
 
     - name: Setup MSVC environment (Windows)
       if: runner.os == 'Windows'
@@ -129,7 +155,8 @@ jobs:
       with:
         key: ${{ matrix.os }}-ccache-${{ github.sha }}
         restore-keys: |
-          ${{ matrix.os }}-ccache-
+          ${{ matrix.os }}-ccache
+        max-size: 1G
     
     - name: Configure CMake (Windows)
       if: runner.os == 'Windows'
