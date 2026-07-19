@@ -155,7 +155,9 @@ jobs:
       - name: Package macOS installer
         if: runner.os == 'macOS'
         run: |
-          cpack --config build/CPackConfig.cmake -G DragNDrop -B package
+          cpack --config build/CPackConfig.cmake -G DragNDrop \
+            -D CPACK_DMG_DISABLE_APPLICATIONS_SYMLINK=ON \
+            -B package
           mkdir -p dist
           mv package/*.dmg "dist/element-${{ inputs.version }}-macos.dmg"
 
