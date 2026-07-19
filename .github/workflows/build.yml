@@ -1,29 +1,33 @@
-name: Build
+name: Build preliminary Windows installer
 
 on:
   push:
     branches: [ main ]
-    <<: &ci_paths
-      paths-ignore:
-        - 'deps/**'
-      paths:
-        - 'src/**'
-        - 'include/**'
-        - '**/*.cmake'
-        - 'CMakeLists.txt'
-        - '**/CMakeLists.txt'
-        - '.gitmodules'
-        - '.github/workflows/build.yml'
+    paths:
+      - 'src/**'
+      - 'include/**'
+      - '**/*.cmake'
+      - 'CMakeLists.txt'
+      - '**/CMakeLists.txt'
+      - '.gitmodules'
+      - '.github/workflows/build.yml'
   pull_request:
     branches: [ main ]
-    <<: *ci_paths
+    paths:
+      - 'src/**'
+      - 'include/**'
+      - '**/*.cmake'
+      - 'CMakeLists.txt'
+      - '**/CMakeLists.txt'
+      - '.gitmodules'
+      - '.github/workflows/build.yml'
   workflow_dispatch:
 
 jobs:
   build-and-test:
     strategy:
       matrix:
-        os: [ubuntu-22.04, macos-latest, windows-2022]
+        os: [windows-2022]
       fail-fast: false
     
     runs-on: ${{ matrix.os }}
@@ -105,6 +109,7 @@ jobs:
       if: runner.os == 'Windows'
       shell: pwsh
       run: |
+        choco install nsis -y --no-progress
         $boost_ver = "1.83.0"
         $boost_dir = "boost_$($boost_ver -replace '\.','_')"
         $url = "https://archives.boost.io/release/$boost_ver/source/${boost_dir}.zip"
@@ -132,6 +137,7 @@ jobs:
         cmake -B build -G Ninja `
           -DCMAKE_C_COMPILER=cl -DCMAKE_CXX_COMPILER=cl `
           -DCMAKE_BUILD_TYPE=Release `
+          -DELEMENT_BUILD_NUMBER=1 `
           -DELEMENT_ENABLE_ASIO=ON `
           -DELEMENT_ENABLE_UPDATER=ON `
           -DELEMENT_BUILD_PLUGINS=ON
@@ -151,3 +157,28 @@ jobs:
     
     - name: Run tests
       run: ctest --test-dir build --output-on-failure
+
+    - name: Package preliminary Windows installer
+      shell: pwsh
+      run: |
+        cpack --config build/CPackConfig.cmake -G NSIS -B package
+        New-Item -ItemType Directory -Force -Path dist | Out-Null
+        $installer = Get-ChildItem package -Filter *.exe | Select-Object -First 1
+        if (-not $installer) { throw 'CPack did not produce an EXE installer' }
+
+        $outputName = 'element-1.1.1.1-win64.exe'
+        $outputPath = Join-Path dist $outputName
+        Move-Item $installer.FullName $outputPath
+
+        $hash = (Get-FileHash $outputPath -Algorithm SHA256).Hash.ToLowerInvariant()
+        "$hash  $outputName" | Set-Content `
+          -Path 'dist/element-1.1.1.1-win64.sha256.txt' `
+          -Encoding ascii
+
+    - name: Upload preliminary installer
+      uses: actions/upload-artifact@v4
+      with:
+        name: element-1.1.1.1-windows-installer
+        path: dist/*
+        if-no-files-found: error
+        retention-days: 30

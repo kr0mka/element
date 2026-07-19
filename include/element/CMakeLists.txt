@@ -7,7 +7,7 @@
 set(ELEMENT_GIT_BASE "c31b92b781886c621e3ca9625c5c0197fccbfb00" CACHE STRING "Base commit/tag for build numbering")
 
 # Allow build number override (e.g., from CI)
-set(ELEMENT_BUILD_NUMBER 0)
+set(ELEMENT_BUILD_NUMBER "" CACHE STRING "Override the generated Element build number")
 
 # Only run git commands if git is found and .git directory exists
 find_package(Git)
