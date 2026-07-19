@@ -985,6 +985,8 @@ bool GuiService::perform (const InvocationInfo& info)
                 else
                 {
                     window->addToDesktop();
+                    window->setMinimised (false);
+                    window->setVisible (true);
                     window->toFront (true);
                     if (session)
                         showPluginWindowsFor (session->getActiveGraph(), true, false);

@@ -125,11 +125,41 @@ void MainWindow::closeButtonPressed()
 
 void MainWindow::minimiseButtonPressed()
 {
-    auto& gui = *world.services().find<GuiService>();
     if (world.settings().isSystrayEnabled())
-        gui.commands().invokeDirectly (Commands::toggleUserInterface, true);
+        minimiseToTray();
     else
         DocumentWindow::minimiseButtonPressed();
+}
+
+void MainWindow::minimisationStateChanged (bool isNowMinimised)
+{
+#if JUCE_WINDOWS
+    if (isNowMinimised && world.settings().isSystrayEnabled())
+    {
+        minimiseToTray();
+        return;
+    }
+#endif
+
+    DocumentWindow::minimisationStateChanged (isNowMinimised);
+}
+
+void MainWindow::minimiseToTray()
+{
+    // Native Windows title bars report minimisation through
+    // minimisationStateChanged(), rather than minimiseButtonPressed(). Hide the
+    // peer immediately so no taskbar button remains, then remove it once the
+    // native callback has unwound.
+    setVisible (false);
+
+    juce::Component::SafePointer<MainWindow> window (this);
+    juce::MessageManager::callAsync ([window]() mutable {
+        if (window == nullptr || ! window->isOnDesktop())
+            return;
+
+        auto& gui = *window->world.services().find<GuiService>();
+        gui.commands().invokeDirectly (Commands::toggleUserInterface, true);
+    });
 }
 
 void MainWindow::activeWindowStatusChanged()

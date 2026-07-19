@@ -115,10 +115,17 @@ void SystemTray::mouseUp (const MouseEvent& ev)
     }
     else
     {
-        window->setVisible (true);
-        if (window->isMinimised())
-            window->setMinimised (false);
-        window->toFront (true);
+        if (! window->isOnDesktop())
+        {
+            cmd->invokeDirectly (Commands::toggleUserInterface, true);
+        }
+        else
+        {
+            window->setVisible (true);
+            if (window->isMinimised())
+                window->setMinimised (false);
+            window->toFront (true);
+        }
     }
 
     mouseUpAction = -1;
