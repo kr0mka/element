@@ -146,20 +146,11 @@ void MainWindow::minimisationStateChanged (bool isNowMinimised)
 
 void MainWindow::minimiseToTray()
 {
-    // Native Windows title bars report minimisation through
-    // minimisationStateChanged(), rather than minimiseButtonPressed(). Hide the
-    // peer immediately so no taskbar button remains, then remove it once the
-    // native callback has unwound.
-    setVisible (false);
-
-    juce::Component::SafePointer<MainWindow> window (this);
-    juce::MessageManager::callAsync ([window]() mutable {
-        if (window == nullptr || ! window->isOnDesktop())
-            return;
-
-        auto& gui = *window->world.services().find<GuiService>();
-        gui.commands().invokeDirectly (Commands::toggleUserInterface, true);
-    });
+    // Keep the native peer registered while hiding it. Removing the peer also
+    // removes the main window from JUCE's top-level window list, which leaves
+    // the system tray without a window it can restore.
+    auto& gui = *world.services().find<GuiService>();
+    gui.commands().invokeDirectly (Commands::toggleUserInterface, true);
 }
 
 void MainWindow::activeWindowStatusChanged()

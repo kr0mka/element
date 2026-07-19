@@ -977,14 +977,21 @@ bool GuiService::perform (const InvocationInfo& info)
             auto session = context().session();
             if (auto* const window = mainWindow.get())
             {
-                if (window->isOnDesktop())
+                if (window->isOnDesktop() && window->isVisible())
                 {
+#if JUCE_WINDOWS
+                    // A hidden native window has no taskbar button, but keeping
+                    // its peer alive lets the tray icon restore it reliably.
+                    window->setVisible (false);
+#else
                     window->removeFromDesktop();
+#endif
                     closeAllPluginWindows (true);
                 }
                 else
                 {
-                    window->addToDesktop();
+                    if (! window->isOnDesktop())
+                        window->addToDesktop();
                     window->setMinimised (false);
                     window->setVisible (true);
                     window->toFront (true);

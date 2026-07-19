@@ -28,17 +28,10 @@ enum SystemTrayMenuResult
     ExitApplication
 };
 
-static MainWindow* getMainWindow()
-{
-    for (int i = DocumentWindow::getNumTopLevelWindows(); --i >= 0;)
-        if (auto* const window = dynamic_cast<MainWindow*> (DocumentWindow::getTopLevelWindow (i)))
-            return window;
-    return nullptr;
-}
-
 SystemTray* SystemTray::instance = nullptr;
 bool SystemTray::initialized = false;
 static bool canUseSystemTray = true;
+static GuiService* guiService = nullptr;
 
 SystemTray::SystemTray()
 {
@@ -64,6 +57,8 @@ SystemTray::SystemTray()
 
 void SystemTray::init (GuiService& gui)
 {
+    guiService = &gui;
+
     if (initialized)
         return;
 
@@ -96,11 +91,14 @@ void SystemTray::setEnabled (bool enabled)
 
 void SystemTray::mouseUp (const MouseEvent& ev)
 {
-    auto* window = getMainWindow();
-    if (! window)
+    if (guiService == nullptr)
         return;
 
-    auto* const cmd = &window->services().find<UI>()->commands();
+    auto* window = guiService->getMainWindow();
+    if (window == nullptr)
+        return;
+
+    auto* const cmd = &guiService->commands();
     if (mouseUpAction == ShowMenu)
     {
         PopupMenu menu;
@@ -115,15 +113,15 @@ void SystemTray::mouseUp (const MouseEvent& ev)
     }
     else
     {
-        if (! window->isOnDesktop())
+        if (! window->isOnDesktop() || ! window->isVisible())
         {
             cmd->invokeDirectly (Commands::toggleUserInterface, true);
         }
         else
         {
-            window->setVisible (true);
             if (window->isMinimised())
                 window->setMinimised (false);
+            window->setVisible (true);
             window->toFront (true);
         }
     }
@@ -133,11 +131,10 @@ void SystemTray::mouseUp (const MouseEvent& ev)
 
 void SystemTray::runMenu()
 {
-    auto* window = getMainWindow();
-    if (! window)
+    if (guiService == nullptr || guiService->getMainWindow() == nullptr)
         return;
 
-    auto* const cmd = &window->services().find<UI>()->commands();
+    auto* const cmd = &guiService->commands();
 
     PopupMenu menu;
     menu.addCommandItem (cmd, Commands::toggleUserInterface, "Show/Hide");
