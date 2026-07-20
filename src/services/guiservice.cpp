@@ -342,8 +342,14 @@ void GuiService::saveProperties (PropertiesFile* props)
     {
         props->setValue ("mainWindowState", mainWindow->getWindowStateAsString());
         props->setValue ("mainWindowFullScreen", mainWindow->isFullScreen());
+#if JUCE_WINDOWS
+        // Manual Windows launches should always show the main window. Startup
+        // minimization is controlled solely by the Run-entry argument.
+        props->setValue ("mainWindowVisible", true);
+#else
         if (! startMinimizedOnLaunch)
             props->setValue ("mainWindowVisible", mainWindow->isOnDesktop() && mainWindow->isVisible());
+#endif
     }
 
     if (_content)
@@ -669,12 +675,13 @@ void GuiService::run()
 
 #if JUCE_WINDOWS
     const bool startHiddenInTray = startMinimizedOnLaunch && settings.isSystrayEnabled();
+    const bool shouldShowMainWindow = ! startHiddenInTray;
 #else
-    constexpr bool startHiddenInTray = false;
+    const bool shouldShowMainWindow = startMinimizedOnLaunch
+                                      || pf->getBoolValue ("mainWindowVisible", true);
 #endif
 
-    if (! startHiddenInTray
-        && (startMinimizedOnLaunch || pf->getBoolValue ("mainWindowVisible", true)))
+    if (shouldShowMainWindow)
     {
         mainWindow->setVisible (true);
         if (pf->getBoolValue ("mainWindowFullScreen", false))

@@ -88,6 +88,7 @@ public:
 
     /** Starts the main window minimized during this launch. */
     void setStartMinimized (bool shouldStartMinimized);
+    bool isStartingMinimized() const noexcept { return startMinimizedOnLaunch; }
 
     bool haveActiveWindows() const;
 

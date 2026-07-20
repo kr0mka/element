@@ -182,12 +182,18 @@ void Services::run()
     {
         gui->stabilizeContent();
         const Node graph (session->getCurrentGraph());
+#if ! JUCE_WINDOWS
         auto* const props = context().settings().getUserSettings();
+#endif
 
         if (graph.isValid())
         {
             // don't show plugin windows on load if the UI was hidden
+#if JUCE_WINDOWS
+            if (! gui->isStartingMinimized())
+#else
             if (props->getBoolValue ("mainWindowVisible", true))
+#endif
                 gui->showPluginWindowsFor (graph);
         }
     }
