@@ -421,13 +421,13 @@ public:
         startWithWindows.setToggleState (windowsstartup::isEnabled(), dontSendNotification);
         startWithWindows.getToggleStateValue().addListener (this);
 
-        addAndMakeVisible (startMinimizedToTrayLabel);
-        startMinimizedToTrayLabel.setText ("Start minimized to tray", dontSendNotification);
-        startMinimizedToTrayLabel.setFont (Font (FontOptions (12.0)));
-        addAndMakeVisible (startMinimizedToTray);
-        startMinimizedToTray.setClickingTogglesState (true);
-        startMinimizedToTray.setToggleState (settings.startMinimizedToTray(), dontSendNotification);
-        startMinimizedToTray.getToggleStateValue().addListener (this);
+        addAndMakeVisible (startMinimizedLabel);
+        startMinimizedLabel.setText ("Start minimized", dontSendNotification);
+        startMinimizedLabel.setFont (Font (FontOptions (12.0)));
+        addAndMakeVisible (startMinimized);
+        startMinimized.setClickingTogglesState (true);
+        startMinimized.setToggleState (settings.startMinimized(), dontSendNotification);
+        startMinimized.getToggleStateValue().addListener (this);
         updateWindowsStartupEnablement();
 #endif
 
@@ -507,7 +507,7 @@ public:
         mainContentBox.getSelectedIdAsValue().removeListener (this);
 #if JUCE_WINDOWS
         startWithWindows.getToggleStateValue().removeListener (this);
-        startMinimizedToTray.getToggleStateValue().removeListener (this);
+        startMinimized.getToggleStateValue().removeListener (this);
 #endif
     }
 
@@ -567,9 +567,9 @@ public:
 
 #if JUCE_WINDOWS
         layoutSetting (r, startWithWindowsLabel, startWithWindows);
-        layoutSetting (r, startMinimizedToTrayLabel, startMinimizedToTray);
-        startMinimizedToTrayLabel.setBounds (
-            startMinimizedToTrayLabel.getBounds().withTrimmedLeft (18));
+        layoutSetting (r, startMinimizedLabel, startMinimized);
+        startMinimizedLabel.setBounds (
+            startMinimizedLabel.getBounds().withTrimmedLeft (18));
 #endif
         layoutSetting (r, systrayLabel, systray);
         layoutSetting (r, desktopScaleLabel, desktopScale, getWidth() / 4);
@@ -645,7 +645,7 @@ public:
         else if (value.refersToSameSourceAs (startWithWindows.getToggleStateValue()))
         {
             const auto shouldStart = startWithWindows.getToggleState();
-            if (! windowsstartup::setEnabled (shouldStart, settings.startMinimizedToTray()))
+            if (! windowsstartup::setEnabled (shouldStart, settings.startMinimized()))
             {
                 startWithWindows.setToggleState (! shouldStart, dontSendNotification);
                 updateWindowsStartupEnablement();
@@ -654,17 +654,17 @@ public:
             }
             updateWindowsStartupEnablement();
         }
-        else if (value.refersToSameSourceAs (startMinimizedToTray.getToggleStateValue()))
+        else if (value.refersToSameSourceAs (startMinimized.getToggleStateValue()))
         {
-            const auto oldValue = settings.startMinimizedToTray();
-            const auto newValue = startMinimizedToTray.getToggleState();
-            settings.setStartMinimizedToTray (newValue);
+            const auto oldValue = settings.startMinimized();
+            const auto newValue = startMinimized.getToggleState();
+            settings.setStartMinimized (newValue);
 
             if (startWithWindows.getToggleState()
                 && ! windowsstartup::setEnabled (true, newValue))
             {
-                settings.setStartMinimizedToTray (oldValue);
-                startMinimizedToTray.setToggleState (oldValue, dontSendNotification);
+                settings.setStartMinimized (oldValue);
+                startMinimized.setToggleState (oldValue, dontSendNotification);
                 showWindowsStartupError();
                 return;
             }
@@ -734,8 +734,8 @@ private:
 #if JUCE_WINDOWS
     Label startWithWindowsLabel;
     SettingButton startWithWindows;
-    Label startMinimizedToTrayLabel;
-    SettingButton startMinimizedToTray;
+    Label startMinimizedLabel;
+    SettingButton startMinimized;
 #endif
 
     Label desktopScaleLabel;
@@ -752,8 +752,8 @@ private:
     void updateWindowsStartupEnablement()
     {
         const auto enabled = startWithWindows.getToggleState();
-        startMinimizedToTrayLabel.setEnabled (enabled);
-        startMinimizedToTray.setEnabled (enabled);
+        startMinimizedLabel.setEnabled (enabled);
+        startMinimized.setEnabled (enabled);
     }
 
     static void showWindowsStartupError()

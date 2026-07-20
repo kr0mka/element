@@ -83,8 +83,10 @@ void SystemTray::setEnabled (bool enabled)
     {
         if (instance != nullptr)
         {
-            if (instance->isOnDesktop())
-                instance->removeFromDesktop();
+            // Reusing the same Windows notification component after removing
+            // it can leave a stale shell icon that disappears on hover.
+            delete instance;
+            instance = nullptr;
         }
     }
 }

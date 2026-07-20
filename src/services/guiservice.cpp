@@ -342,7 +342,7 @@ void GuiService::saveProperties (PropertiesFile* props)
     {
         props->setValue ("mainWindowState", mainWindow->getWindowStateAsString());
         props->setValue ("mainWindowFullScreen", mainWindow->isFullScreen());
-        if (! startedMinimizedToTray)
+        if (! startMinimizedOnLaunch)
             props->setValue ("mainWindowVisible", mainWindow->isOnDesktop() && mainWindow->isVisible());
     }
 
@@ -667,12 +667,14 @@ void GuiService::run()
     mainWindow->addKeyListener (commands().getKeyMappings());
     _content->restoreState (pf);
 
-    if (! startedMinimizedToTray && pf->getBoolValue ("mainWindowVisible", true))
+    if (startMinimizedOnLaunch || pf->getBoolValue ("mainWindowVisible", true))
     {
         mainWindow->setVisible (true);
         if (pf->getBoolValue ("mainWindowFullScreen", false))
             mainWindow->setFullScreen (true);
         mainWindow->addToDesktop();
+        if (startMinimizedOnLaunch)
+            mainWindow->setMinimised (true);
     }
 
     sibling<SessionService>()->resetChanges();
@@ -1133,16 +1135,16 @@ void GuiService::refreshSystemTray()
     // stabilize systray
     auto& settings = context().settings();
 #if ELEMENT_USE_SYSTEM_TRAY
-    SystemTray::setEnabled (settings.isSystrayEnabled() || startedMinimizedToTray);
+    SystemTray::setEnabled (settings.isSystrayEnabled());
 #else
     juce::ignoreUnused (settings);
     SystemTray::setEnabled (false);
 #endif
 }
 
-void GuiService::setStartMinimizedToTray (bool shouldStartMinimized)
+void GuiService::setStartMinimized (bool shouldStartMinimized)
 {
-    startedMinimizedToTray = shouldStartMinimized;
+    startMinimizedOnLaunch = shouldStartMinimized;
 }
 
 void GuiService::setMainWindowTitler (std::function<juce::String()> f)

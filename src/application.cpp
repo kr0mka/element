@@ -421,9 +421,9 @@ void Application::finishLaunching()
 
     auto& ui = *world->services().find<UI>();
 #if JUCE_WINDOWS
-    ui.setStartMinimizedToTray (
-        world->settings().startMinimizedToTray()
-        && windowsstartup::shouldStartMinimizedToTray (launchCommandLine));
+    ui.setStartMinimized (
+        world->settings().startMinimized()
+        && windowsstartup::shouldStartMinimized (launchCommandLine));
 #endif
     if (auto cf = createContentFactory())
         ui.setContentFactory (std::move (cf));

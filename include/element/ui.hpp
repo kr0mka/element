@@ -86,8 +86,8 @@ public:
     /** Refershes the system tray based on Settings */
     void refreshSystemTray();
 
-    /** Hides the main window during this launch and keeps the tray available. */
-    void setStartMinimizedToTray (bool shouldStartMinimized);
+    /** Starts the main window minimized during this launch. */
+    void setStartMinimized (bool shouldStartMinimized);
 
     bool haveActiveWindows() const;
 
@@ -166,7 +166,7 @@ private:
     std::unique_ptr<juce::DialogWindow> about;
     std::unique_ptr<ContentFactory> factory;
     std::unique_ptr<Designer> designer;
-    bool startedMinimizedToTray = false;
+    bool startMinimizedOnLaunch = false;
 
     Node selectedNode; // TODO: content manager
 

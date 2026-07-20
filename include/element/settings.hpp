@@ -39,7 +39,7 @@ public:
     static const char* oscHostPortKey;
     static const char* oscHostEnabledKey;
     static const char* systrayKey;
-    static const char* startMinimizedToTrayKey;
+    static const char* startMinimizedKey;
     static const char* midiOutLatencyKey;
     static const char* desktopScaleKey;
     static const char* mainContentTypeKey;
@@ -119,8 +119,8 @@ public:
     bool isSystrayEnabled() const;
     void setSystrayEnabled (bool);
 
-    bool startMinimizedToTray() const;
-    void setStartMinimizedToTray (bool);
+    bool startMinimized() const;
+    void setStartMinimized (bool);
 
     double getMidiOutLatency() const;
     void setMidiOutLatency (double latencyMs);
