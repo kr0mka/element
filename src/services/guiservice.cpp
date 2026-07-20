@@ -667,14 +667,28 @@ void GuiService::run()
     mainWindow->addKeyListener (commands().getKeyMappings());
     _content->restoreState (pf);
 
-    if (startMinimizedOnLaunch || pf->getBoolValue ("mainWindowVisible", true))
+#if JUCE_WINDOWS
+    const bool startHiddenInTray = startMinimizedOnLaunch && settings.isSystrayEnabled();
+#else
+    constexpr bool startHiddenInTray = false;
+#endif
+
+    if (! startHiddenInTray
+        && (startMinimizedOnLaunch || pf->getBoolValue ("mainWindowVisible", true)))
     {
         mainWindow->setVisible (true);
         if (pf->getBoolValue ("mainWindowFullScreen", false))
             mainWindow->setFullScreen (true);
         mainWindow->addToDesktop();
+
         if (startMinimizedOnLaunch)
-            mainWindow->setMinimised (true);
+        {
+            juce::Component::SafePointer<MainWindow> window (mainWindow.get());
+            juce::MessageManager::callAsync ([window]() mutable {
+                if (window != nullptr)
+                    window->setMinimised (true);
+            });
+        }
     }
 
     sibling<SessionService>()->resetChanges();
