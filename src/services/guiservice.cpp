@@ -1182,6 +1182,22 @@ void GuiService::setMainWindowTitler (std::function<juce::String()> f)
 
 MainWindow* GuiService::getMainWindow() const noexcept { return mainWindow.get(); }
 
+void GuiService::showMainWindow()
+{
+    if (auto* window = mainWindow.get())
+    {
+        if (! window->isOnDesktop())
+            window->addToDesktop();
+
+        window->setMinimised (false);
+        window->setVisible (true);
+#if JUCE_WINDOWS
+        Process::makeForegroundProcess();
+#endif
+        window->toFront (true);
+    }
+}
+
 void GuiService::refreshMainMenu()
 {
     commands().commandStatusChanged();

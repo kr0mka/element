@@ -383,6 +383,11 @@ void Application::anotherInstanceStarted (const String& commandLine)
     }
 
     maybeOpenCommandLineFile (commandLine);
+
+    // A normal second launch is a request to restore the existing instance,
+    // including when its main window is currently hidden in the system tray.
+    if (auto* gui = world->services().find<GuiService>())
+        gui->showMainWindow();
 }
 
 void Application::handleURLSchemeCallback (const String& urlString)
@@ -391,8 +396,7 @@ void Application::handleURLSchemeCallback (const String& urlString)
     if (url.getDomain() == "auth" && url.getSubPath() == "callback")
     {
         if (auto* gui = world->services().find<GuiService>())
-            if (auto* mainWindow = gui->getMainWindow())
-                mainWindow->toFront (true);
+            gui->showMainWindow();
 
         auth::handleCallback (urlString, world->settings());
     }

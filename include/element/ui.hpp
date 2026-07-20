@@ -58,6 +58,8 @@ public:
     void closeAllWindows();
 
     MainWindow* getMainWindow() const noexcept;
+    /** Restores and foregrounds the main application window. */
+    void showMainWindow();
     void refreshMainMenu();
 
     void showPreferencesDialog (const juce::String& section = {});
