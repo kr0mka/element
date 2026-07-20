@@ -151,7 +151,6 @@ private:
         Context& ctx;
     };
 
-    juce::String launchCommandLine;                       ///< The command line used to launch the app
     std::unique_ptr<Context> world;                       ///< The application context and services
     std::unique_ptr<Startup> startup;                     ///< Handles startup initialization
     std::unique_ptr<AuthStartupThread> authStartupThread; ///< Startup auth refresh thread

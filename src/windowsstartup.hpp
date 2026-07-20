@@ -7,16 +7,10 @@
 
 namespace element::windowsstartup {
 
-inline constexpr auto startMinimizedArgument = "--start-minimized";
-inline constexpr auto legacyStartMinimizedArgument = "--start-minimized-to-tray";
-
 /** Returns true when Element has a per-user Windows startup entry. */
 bool isEnabled();
 
 /** Creates, updates, or removes Element's per-user Windows startup entry. */
-bool setEnabled (bool enabled, bool startMinimized);
-
-/** Returns true when the exact minimized-start argument is present. */
-bool shouldStartMinimized (const juce::String& commandLine);
+bool setEnabled (bool enabled);
 
 } // namespace element::windowsstartup

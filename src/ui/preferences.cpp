@@ -645,7 +645,7 @@ public:
         else if (value.refersToSameSourceAs (startWithWindows.getToggleStateValue()))
         {
             const auto shouldStart = startWithWindows.getToggleState();
-            if (! windowsstartup::setEnabled (shouldStart, settings.startMinimized()))
+            if (! windowsstartup::setEnabled (shouldStart))
             {
                 startWithWindows.setToggleState (! shouldStart, dontSendNotification);
                 updateWindowsStartupEnablement();
@@ -656,18 +656,7 @@ public:
         }
         else if (value.refersToSameSourceAs (startMinimized.getToggleStateValue()))
         {
-            const auto oldValue = settings.startMinimized();
-            const auto newValue = startMinimized.getToggleState();
-            settings.setStartMinimized (newValue);
-
-            if (startWithWindows.getToggleState()
-                && ! windowsstartup::setEnabled (true, newValue))
-            {
-                settings.setStartMinimized (oldValue);
-                startMinimized.setToggleState (oldValue, dontSendNotification);
-                showWindowsStartupError();
-                return;
-            }
+            settings.setStartMinimized (startMinimized.getToggleState());
         }
 #endif
         else if (value.refersToSameSourceAs (mainContentBox.getSelectedIdAsValue()))

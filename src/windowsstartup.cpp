@@ -25,14 +25,11 @@ namespace {
 constexpr auto runKeyPath = L"Software\\Microsoft\\Windows\\CurrentVersion\\Run";
 constexpr auto runValueName = L"Element";
 
-juce::String launchCommand (bool startMinimized)
+juce::String launchCommand()
 {
-    auto command = juce::String ("\"")
-                       + juce::File::getSpecialLocation (juce::File::currentExecutableFile).getFullPathName()
-                       + "\"";
-    if (startMinimized)
-        command << " " << startMinimizedArgument;
-    return command;
+    return juce::String ("\"")
+           + juce::File::getSpecialLocation (juce::File::currentExecutableFile).getFullPathName()
+           + "\"";
 }
 #endif
 
@@ -55,7 +52,7 @@ bool isEnabled()
 #endif
 }
 
-bool setEnabled (bool enabled, bool startMinimized)
+bool setEnabled (bool enabled)
 {
 #if JUCE_WINDOWS
     HKEY key = nullptr;
@@ -91,7 +88,7 @@ bool setEnabled (bool enabled, bool startMinimized)
     if (createResult != ERROR_SUCCESS)
         return false;
 
-    const std::wstring command = launchCommand (startMinimized).toWideCharPointer();
+    const std::wstring command = launchCommand().toWideCharPointer();
     const auto writeResult = ::RegSetValueExW (key,
                                                runValueName,
                                                0,
@@ -101,17 +98,9 @@ bool setEnabled (bool enabled, bool startMinimized)
     ::RegCloseKey (key);
     return writeResult == ERROR_SUCCESS;
 #else
-    juce::ignoreUnused (enabled, startMinimized);
+    juce::ignoreUnused (enabled);
     return false;
 #endif
-}
-
-bool shouldStartMinimized (const juce::String& commandLine)
-{
-    juce::StringArray arguments;
-    arguments.addTokens (commandLine, " \t\r\n", "\"'");
-    return arguments.contains (startMinimizedArgument)
-           || arguments.contains (legacyStartMinimizedArgument);
 }
 
 } // namespace element::windowsstartup
