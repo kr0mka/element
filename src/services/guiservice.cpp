@@ -1132,12 +1132,15 @@ void GuiService::stabilizeViews()
 
 void GuiService::refreshSystemTray()
 {
-    // stabilize systray
-    auto& settings = context().settings();
 #if ELEMENT_USE_SYSTEM_TRAY
-    SystemTray::setEnabled (settings.isSystrayEnabled());
+#if JUCE_WINDOWS
+    // On Windows the tray icon is persistent application UI. The preference
+    // controls only what happens when the main window is minimized.
+    SystemTray::setEnabled (true);
 #else
-    juce::ignoreUnused (settings);
+    SystemTray::setEnabled (context().settings().isSystrayEnabled());
+#endif
+#else
     SystemTray::setEnabled (false);
 #endif
 }
