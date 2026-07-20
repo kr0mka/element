@@ -263,6 +263,9 @@ else()
     set(CPACK_GENERATOR "ZIP")
     set(CPACK_ARCHIVE_COMPONENT_INSTALL OFF)
     set(CPACK_PACKAGING_INSTALL_PREFIX "/")
+    # The NSIS generator assumes packaged executables are under bin. Declaring
+    # this pair creates an "Element" application shortcut in the Start Menu.
+    set(CPACK_PACKAGE_EXECUTABLES "element" "Element")
 endif()
 
 set(ELEMENT_GENERATOR ${CPACK_GENERATOR})
